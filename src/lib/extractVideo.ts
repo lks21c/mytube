@@ -26,6 +26,9 @@ export function extractLockupView(lockup: any): VideoItem | null {
   const id = lockup.content_id;
   if (!id) return null;
 
+  // Skip non-video content (playlists, mixes, radio, channels)
+  if (id.length !== 11 || /^(RD|PL|UU|OL)/.test(id)) return null;
+
   const meta = lockup.metadata;
   const title = meta?.title?.text ?? "";
 
