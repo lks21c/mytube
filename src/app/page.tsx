@@ -5,9 +5,9 @@ import VideoGrid from "@/components/VideoGrid";
 import SummaryDialog from "@/components/SummaryDialog";
 import { useFeed } from "@/hooks/useFeed";
 import { useSummary } from "@/hooks/useSummary";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 
-export default function HomePage() {
+function HomeContent() {
   const { videos, loading, loadingMore, hasMore, error, loadMore } = useFeed();
   const {
     summary,
@@ -62,5 +62,19 @@ export default function HomePage() {
         onClose={handleClose}
       />
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-200 border-t-[var(--color-yt-red)]" />
+        </div>
+      }
+    >
+      <HomeContent />
+    </Suspense>
   );
 }

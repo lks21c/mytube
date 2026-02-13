@@ -69,7 +69,7 @@ export default function VideoCard({ video, onSummarize }: Props) {
         {/* Summary button */}
         <button
           onClick={() => onSummarize(video.id)}
-          className="mt-0.5 h-8 shrink-0 rounded-full bg-[var(--color-yt-red)] px-3 text-xs font-medium text-white opacity-0 transition-opacity hover:bg-red-600 group-hover:opacity-100 max-sm:opacity-100"
+          className="mt-0.5 h-8 shrink-0 rounded-full bg-[var(--color-yt-red)] px-3 text-xs font-medium text-white hover:bg-red-600"
           title="AI 요약"
         >
           요약

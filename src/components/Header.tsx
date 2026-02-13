@@ -1,14 +1,18 @@
 "use client";
 
 import { useState, useEffect, FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import AuthDialog from "./AuthDialog";
+import Sidebar from "./Sidebar";
 
 export default function Header() {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
   const [authOpen, setAuthOpen] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     fetch("/api/auth/status")
@@ -16,6 +20,12 @@ export default function Header() {
       .then((data) => setAuthenticated(data.authenticated))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (pathname === "/search") {
+      setQuery(searchParams.get("q") ?? "");
+    }
+  }, [pathname, searchParams]);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -33,8 +43,23 @@ export default function Header() {
   return (
     <>
       <header className="sticky top-0 z-50 flex h-14 items-center justify-between gap-4 border-b border-[var(--color-yt-border)] bg-white px-4">
-        {/* Logo */}
-        <a href="/" className="flex shrink-0 items-center gap-1">
+        {/* Hamburger + Logo */}
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            aria-label="메뉴 열기"
+            className="rounded-full p-2 hover:bg-[var(--color-yt-hover)]"
+          >
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M3 6h18M3 12h18M3 18h18"
+                stroke="#0f0f0f"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+          <a href="/" className="flex items-center gap-1">
           <svg viewBox="0 0 90 20" className="h-5 w-auto" aria-label="MyTube">
             <rect width="28" height="20" rx="4" fill="#ff0000" />
             <polygon points="11,4 11,16 21,10" fill="white" />
@@ -49,7 +74,8 @@ export default function Header() {
               MyTube
             </text>
           </svg>
-        </a>
+          </a>
+        </div>
 
         {/* Search */}
         <form
@@ -113,6 +139,8 @@ export default function Header() {
           window.location.reload();
         }}
       />
+
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
     </>
   );
 }
