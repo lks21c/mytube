@@ -15,6 +15,9 @@ function HomeContent() {
     error: summaryError,
     summarize,
     reset,
+    mode,
+    setMode,
+    isCached,
   } = useSummary();
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -30,7 +33,7 @@ function HomeContent() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header />
+      <Header summaryMode={mode} onSummaryModeChange={setMode} />
 
       <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
         {loading && (
@@ -48,6 +51,7 @@ function HomeContent() {
         <VideoGrid
           videos={videos}
           onSummarize={handleSummarize}
+          isCached={isCached}
           loadingMore={loadingMore}
           hasMore={hasMore}
           onLoadMore={loadMore}

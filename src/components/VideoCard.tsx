@@ -6,9 +6,10 @@ import type { VideoItem } from "@/types/video";
 interface Props {
   video: VideoItem;
   onSummarize: (videoId: string) => void;
+  cached?: boolean;
 }
 
-export default function VideoCard({ video, onSummarize }: Props) {
+export default function VideoCard({ video, onSummarize, cached }: Props) {
   return (
     <div className="group flex flex-col gap-3">
       {/* Thumbnail */}
@@ -69,7 +70,11 @@ export default function VideoCard({ video, onSummarize }: Props) {
         {/* Summary button */}
         <button
           onClick={() => onSummarize(video.id)}
-          className="mt-0.5 h-8 shrink-0 rounded-full bg-[var(--color-yt-red)] px-3 text-xs font-medium text-white hover:bg-red-600"
+          className={`mt-0.5 h-8 shrink-0 rounded-full px-3 text-xs font-medium text-white ${
+            cached
+              ? "bg-gray-400 hover:bg-gray-500"
+              : "bg-[var(--color-yt-red)] hover:bg-red-600"
+          }`}
           title="AI 요약"
         >
           요약

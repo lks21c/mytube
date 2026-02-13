@@ -53,15 +53,25 @@ export function extractLockupView(lockup: any): VideoItem | null {
   const thumbnail =
     thumbs[0]?.url ?? `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
 
-  // Duration from overlay_metadata or content_image overlay
+  // Duration from ThumbnailBottomOverlayView badges or overlay text
   let duration = "";
   const overlays = lockup.content_image?.overlays ?? [];
   for (const overlay of overlays) {
-    const dText = overlay?.text?.text;
-    if (dText && /\d+:\d+/.test(dText)) {
-      duration = dText;
-      break;
+    if (overlay.type === "ThumbnailBottomOverlayView") {
+      for (const badge of overlay.badges ?? []) {
+        if (badge?.text && /\d+:\d+/.test(badge.text)) {
+          duration = badge.text;
+          break;
+        }
+      }
     }
+    if (!duration) {
+      const dText = overlay?.text?.text;
+      if (dText && /\d+:\d+/.test(dText)) {
+        duration = dText;
+      }
+    }
+    if (duration) break;
   }
 
   return {

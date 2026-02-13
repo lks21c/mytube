@@ -7,6 +7,7 @@ import type { VideoItem } from "@/types/video";
 interface Props {
   videos: VideoItem[];
   onSummarize: (videoId: string) => void;
+  isCached?: (videoId: string) => boolean;
   loadingMore?: boolean;
   hasMore?: boolean;
   onLoadMore?: () => void;
@@ -15,6 +16,7 @@ interface Props {
 export default function VideoGrid({
   videos,
   onSummarize,
+  isCached,
   loadingMore,
   hasMore,
   onLoadMore,
@@ -46,6 +48,7 @@ export default function VideoGrid({
             key={`${video.id}-${i}`}
             video={video}
             onSummarize={onSummarize}
+            cached={isCached?.(video.id)}
           />
         ))}
       </div>

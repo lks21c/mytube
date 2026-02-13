@@ -48,16 +48,10 @@ function extractHistoryLockup(lockup: any): VideoItem | null {
   let viewCount = "";
 
   const rows = meta?.metadata?.metadata_rows ?? [];
-  for (const row of rows) {
-    for (const part of row.metadata_parts ?? []) {
-      const text = part?.text?.text ?? "";
-      if (!channelName && part?.text?.endpoint) {
-        channelName = text;
-      } else if (text.includes("조회수") || text.includes("회")) {
-        viewCount = text;
-      }
-    }
-  }
+  // row[0] contains channel name (part[0]) and view count (part[1])
+  const firstRow = rows[0]?.metadata_parts ?? [];
+  if (firstRow[0]?.text?.text) channelName = firstRow[0].text.text;
+  if (firstRow[1]?.text?.text) viewCount = firstRow[1].text.text;
 
   const thumbs = lockup.content_image?.image ?? [];
   const thumbnail =
@@ -78,8 +72,11 @@ function extractHistoryLockup(lockup: any): VideoItem | null {
     }
   }
 
-  // Channel thumbnail from metadata image
-  const channelThumbnail = meta?.image?.image?.[0]?.url ?? "";
+  // Channel thumbnail from DecoratedAvatarView → avatar → image
+  const channelThumbnail =
+    meta?.image?.avatar?.image?.[0]?.url ??
+    meta?.image?.image?.[0]?.url ??
+    "";
 
   return {
     id,

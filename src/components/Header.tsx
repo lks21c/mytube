@@ -4,8 +4,14 @@ import { useState, useEffect, FormEvent } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import AuthDialog from "./AuthDialog";
 import Sidebar from "./Sidebar";
+import type { SummaryMode } from "@/hooks/useSummary";
 
-export default function Header() {
+interface Props {
+  summaryMode: SummaryMode;
+  onSummaryModeChange: (mode: SummaryMode) => void;
+}
+
+export default function Header({ summaryMode, onSummaryModeChange }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -140,7 +146,12 @@ export default function Header() {
         }}
       />
 
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        summaryMode={summaryMode}
+        onSummaryModeChange={onSummaryModeChange}
+      />
     </>
   );
 }

@@ -16,6 +16,9 @@ function HistoryContent() {
     error: summaryError,
     summarize,
     reset,
+    mode,
+    setMode,
+    isCached,
   } = useSummary();
   const [dialogOpen, setDialogOpen] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -48,7 +51,7 @@ function HistoryContent() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header />
+      <Header summaryMode={mode} onSummaryModeChange={setMode} />
 
       <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
         <h1 className="mb-6 text-xl font-bold text-[var(--color-yt-text)]">
@@ -86,6 +89,7 @@ function HistoryContent() {
                   key={`${video.id}-${vi}`}
                   video={video}
                   onSummarize={handleSummarize}
+                  cached={isCached(video.id)}
                 />
               ))}
             </div>

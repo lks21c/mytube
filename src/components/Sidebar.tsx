@@ -2,13 +2,16 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import type { SummaryMode } from "@/hooks/useSummary";
 
 interface Props {
   open: boolean;
   onClose: () => void;
+  summaryMode: SummaryMode;
+  onSummaryModeChange: (mode: SummaryMode) => void;
 }
 
-export default function Sidebar({ open, onClose }: Props) {
+export default function Sidebar({ open, onClose, summaryMode, onSummaryModeChange }: Props) {
   useEffect(() => {
     if (!open) return;
     function handleKey(e: KeyboardEvent) {
@@ -103,6 +106,38 @@ export default function Sidebar({ open, onClose }: Props) {
             </Link>
           </li>
         </ul>
+
+        {/* Settings */}
+        <div className="border-t border-[var(--color-yt-border)] px-4 py-4">
+          <p className="mb-2 px-2 text-xs font-semibold text-[var(--color-yt-text-secondary)]">
+            설정
+          </p>
+          <div className="flex items-center justify-between px-2">
+            <span className="text-sm text-[var(--color-yt-text)]">요약 방식</span>
+            <div className="flex rounded-full bg-gray-100 p-0.5 text-xs">
+              <button
+                onClick={() => onSummaryModeChange("openrouter")}
+                className={`rounded-full px-2.5 py-1 font-medium transition-colors ${
+                  summaryMode === "openrouter"
+                    ? "bg-white text-[var(--color-yt-text)] shadow-sm"
+                    : "text-[var(--color-yt-text-secondary)] hover:text-[var(--color-yt-text)]"
+                }`}
+              >
+                자막
+              </button>
+              <button
+                onClick={() => onSummaryModeChange("gemini")}
+                className={`rounded-full px-2.5 py-1 font-medium transition-colors ${
+                  summaryMode === "gemini"
+                    ? "bg-white text-[var(--color-yt-text)] shadow-sm"
+                    : "text-[var(--color-yt-text-secondary)] hover:text-[var(--color-yt-text)]"
+                }`}
+              >
+                Gemini
+              </button>
+            </div>
+          </div>
+        </div>
       </nav>
     </>
   );

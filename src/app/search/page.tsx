@@ -19,6 +19,9 @@ function SearchContent() {
     error: summaryError,
     summarize,
     reset,
+    mode,
+    setMode,
+    isCached,
   } = useSummary();
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -38,7 +41,7 @@ function SearchContent() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header />
+      <Header summaryMode={mode} onSummaryModeChange={setMode} />
 
       <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
         {query && (
@@ -68,6 +71,7 @@ function SearchContent() {
         <VideoGrid
           videos={videos}
           onSummarize={handleSummarize}
+          isCached={isCached}
           loadingMore={loadingMore}
           hasMore={hasMore}
           onLoadMore={loadMore}
