@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --color-yt-red: #ff0000;
+  --color-yt-dark: #0f0f0f;
+  --color-yt-card: #ffffff;
+  --color-yt-hover: #f2f2f2;
+  --color-yt-text: #0f0f0f;
+  --color-yt-text-secondary: #606060;
+  --color-yt-border: #e5e5e5;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-sans), sans-serif;
+  background: #f9f9f9;
+  color: var(--color-yt-text);
+}
+
+.line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Summary dialog markdown */
+.summary-content h1,
+.summary-content h2,
+.summary-content h3 {
+  font-weight: 700;
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+}
+.summary-content h1 { font-size: 1.25rem; }
+.summary-content h2 { font-size: 1.125rem; }
+.summary-content h3 { font-size: 1rem; }
+.summary-content p { margin-bottom: 0.75em; line-height: 1.6; }
+.summary-content ul, .summary-content ol { padding-left: 1.5em; margin-bottom: 0.75em; }
+.summary-content li { margin-bottom: 0.25em; line-height: 1.5; }
+.summary-content strong { font-weight: 700; }
