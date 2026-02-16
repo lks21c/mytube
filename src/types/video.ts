@@ -4,6 +4,7 @@ export interface VideoItem {
   thumbnail: string;
   channelName: string;
   channelThumbnail: string;
+  channelUrl: string;
   viewCount: string;
   publishedTime: string;
   duration: string;

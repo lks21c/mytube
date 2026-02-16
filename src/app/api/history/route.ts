@@ -31,6 +31,7 @@ function extractShort(item: any): VideoItem | null {
     thumbnail,
     channelName: "",
     channelThumbnail: "",
+    channelUrl: "",
     viewCount,
     publishedTime: "",
     duration: "Shorts",
@@ -45,12 +46,17 @@ function extractHistoryLockup(lockup: any): VideoItem | null {
   const title = meta?.title?.text ?? "";
 
   let channelName = "";
+  let channelUrl = "";
   let viewCount = "";
 
   const rows = meta?.metadata?.metadata_rows ?? [];
   // row[0] contains channel name (part[0]) and view count (part[1])
   const firstRow = rows[0]?.metadata_parts ?? [];
-  if (firstRow[0]?.text?.text) channelName = firstRow[0].text.text;
+  if (firstRow[0]?.text?.text) {
+    channelName = firstRow[0].text.text;
+    const browseId = firstRow[0]?.text?.endpoint?.payload?.browseId;
+    if (browseId) channelUrl = `/channel/${browseId}`;
+  }
   if (firstRow[1]?.text?.text) viewCount = firstRow[1].text.text;
 
   const thumbs = lockup.content_image?.image ?? [];
@@ -84,6 +90,7 @@ function extractHistoryLockup(lockup: any): VideoItem | null {
     thumbnail,
     channelName,
     channelThumbnail,
+    channelUrl,
     viewCount,
     publishedTime: "",
     duration,

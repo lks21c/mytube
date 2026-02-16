@@ -12,6 +12,7 @@ export function extractVideo(v: any): VideoItem | null {
       `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
     channelName: v.author?.name ?? "",
     channelThumbnail: v.author?.best_thumbnail?.url ?? "",
+    channelUrl: v.author?.id ? `/channel/${v.author.id}` : "",
     viewCount: v.short_view_count?.toString?.() ?? "",
     publishedTime: v.published?.toString?.() ?? "",
     duration:
@@ -34,6 +35,7 @@ export function extractLockupView(lockup: any): VideoItem | null {
 
   // Channel name is in metadata_rows[0].metadata_parts[0].text.text
   let channelName = "";
+  let channelUrl = "";
   let viewCount = "";
   let publishedTime = "";
 
@@ -43,6 +45,10 @@ export function extractLockupView(lockup: any): VideoItem | null {
       const text = part?.text?.text ?? "";
       if (!channelName && part?.text?.endpoint) {
         channelName = text;
+        const browseId = part.text.endpoint?.payload?.browseId;
+        if (browseId) {
+          channelUrl = `/channel/${browseId}`;
+        }
       } else if (text.includes("조회수") || text.includes("회")) {
         viewCount = text;
       } else if (text.includes("전") || text.includes("ago")) {
@@ -83,6 +89,7 @@ export function extractLockupView(lockup: any): VideoItem | null {
     thumbnail,
     channelName,
     channelThumbnail: "",
+    channelUrl,
     viewCount,
     publishedTime,
     duration,

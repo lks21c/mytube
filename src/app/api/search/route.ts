@@ -7,10 +7,17 @@ import type { VideoItem } from "@/types/video";
 let cachedSearch: any = null;
 let cachedQuery = "";
 let cachedPage = 0;
+let cachedFilters = "";
 
 export async function GET(request: NextRequest) {
   const query = request.nextUrl.searchParams.get("q");
   const page = parseInt(request.nextUrl.searchParams.get("page") ?? "0");
+
+  const sortBy = request.nextUrl.searchParams.get("sort_by") || "";
+  const uploadDate = request.nextUrl.searchParams.get("upload_date") || "";
+  const duration = request.nextUrl.searchParams.get("duration") || "";
+
+  const filtersKey = `${sortBy}|${uploadDate}|${duration}`;
 
   if (!query) {
     return NextResponse.json(
@@ -22,10 +29,21 @@ export async function GET(request: NextRequest) {
   try {
     const yt = await getInnertube();
 
-    // New query or page 0: fresh search
-    if (page === 0 || query !== cachedQuery || !cachedSearch) {
-      cachedSearch = await yt.search(query, { type: "video" });
+    const searchFilters: Record<string, string> = { type: "video" };
+    if (sortBy && sortBy !== "relevance") searchFilters.sort_by = sortBy;
+    if (uploadDate && uploadDate !== "all") searchFilters.upload_date = uploadDate;
+    if (duration && duration !== "all") searchFilters.duration = duration;
+
+    // New query, page 0, or filter change: fresh search
+    if (
+      page === 0 ||
+      query !== cachedQuery ||
+      filtersKey !== cachedFilters ||
+      !cachedSearch
+    ) {
+      cachedSearch = await yt.search(query, searchFilters);
       cachedQuery = query;
+      cachedFilters = filtersKey;
       cachedPage = 0;
     } else {
       // Load next page via continuation

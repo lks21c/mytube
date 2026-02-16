@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
 import type { VideoItem } from "@/types/video";
 
@@ -48,7 +49,24 @@ export default function VideoCard({ video, onSummarize, cached }: Props) {
       {/* Info */}
       <div className="flex gap-3 px-1">
         {/* Channel avatar */}
-        {video.channelThumbnail ? (
+        {video.channelUrl ? (
+          <Link
+            href={video.channelUrl}
+            className="shrink-0"
+          >
+            {video.channelThumbnail ? (
+              <Image
+                src={video.channelThumbnail}
+                alt={video.channelName}
+                width={36}
+                height={36}
+                className="h-9 w-9 rounded-full"
+              />
+            ) : (
+              <div className="h-9 w-9 rounded-full bg-gray-300" />
+            )}
+          </Link>
+        ) : video.channelThumbnail ? (
           <Image
             src={video.channelThumbnail}
             alt={video.channelName}
@@ -71,9 +89,18 @@ export default function VideoCard({ video, onSummarize, cached }: Props) {
               {video.title}
             </h3>
           </a>
-          <p className="mt-0.5 text-xs text-[var(--color-yt-text-secondary)]">
-            {video.channelName}
-          </p>
+          {video.channelUrl ? (
+            <Link
+              href={video.channelUrl}
+              className="mt-0.5 block text-xs text-[var(--color-yt-text-secondary)] hover:text-[var(--color-yt-text)]"
+            >
+              {video.channelName}
+            </Link>
+          ) : (
+            <p className="mt-0.5 text-xs text-[var(--color-yt-text-secondary)]">
+              {video.channelName}
+            </p>
+          )}
           <p className="text-xs text-[var(--color-yt-text-secondary)]">
             {[video.viewCount, video.publishedTime].filter(Boolean).join(" · ")}
           </p>
