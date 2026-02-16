@@ -88,7 +88,7 @@ export function extractLockupView(lockup: any): VideoItem | null {
     title,
     thumbnail,
     channelName,
-    channelThumbnail: "",
+    channelThumbnail: meta?.image?.avatar?.image?.[0]?.url ?? "",
     channelUrl,
     viewCount,
     publishedTime,
