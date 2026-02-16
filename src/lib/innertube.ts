@@ -1,5 +1,5 @@
 import { Innertube } from "youtubei.js";
-import puppeteer, { Browser } from "puppeteer";
+import type { Browser } from "puppeteer";
 import path from "path";
 import os from "os";
 import fs from "fs";
@@ -52,12 +52,46 @@ export async function getInnertube(): Promise<Innertube> {
 }
 
 /**
+ * Apply a cookie string directly (from WebView or external source).
+ * Persists to disk and re-creates the Innertube instance.
+ */
+export async function applyCookieString(cookieStr: string): Promise<boolean> {
+  savedCookie = cookieStr;
+  saveCookieToDisk(cookieStr);
+  instance = null;
+  await getInnertube();
+
+  try {
+    const yt = await getInnertube();
+    const home = await yt.getHomeFeed();
+    if ((home.videos?.length ?? 0) > 0) {
+      authenticated = true;
+      console.log("Cookie apply success!");
+      return true;
+    }
+  } catch (e) {
+    console.log("Home feed test failed, but cookies applied:", (e as Error).message);
+    authenticated = true;
+  }
+  return authenticated;
+}
+
+/**
  * Launch Chrome for Google login, extract YouTube cookies automatically.
  * Returns immediately - poll getAuthStatus() to check completion.
+ * Requires puppeteer to be installed; throws if unavailable.
  */
 export async function startCookieLogin(): Promise<void> {
   if (loginInProgress) return;
   loginInProgress = true;
+
+  let puppeteer;
+  try {
+    puppeteer = (await import("puppeteer")).default;
+  } catch {
+    loginInProgress = false;
+    throw new Error("Puppeteer를 사용할 수 없습니다. 쿠키를 직접 전달해주세요.");
+  }
 
   (async () => {
     try {
@@ -103,23 +137,7 @@ export async function startCookieLogin(): Promise<void> {
       await loginBrowser.close();
       loginBrowser = null;
 
-      // Apply & persist cookies
-      savedCookie = cookieStr;
-      saveCookieToDisk(cookieStr);
-      instance = null;
-      await getInnertube();
-
-      try {
-        const yt = await getInnertube();
-        const home = await yt.getHomeFeed();
-        if ((home.videos?.length ?? 0) > 0) {
-          authenticated = true;
-          console.log("Cookie login success!");
-        }
-      } catch (e) {
-        console.log("Home feed test failed, but cookies applied:", (e as Error).message);
-        authenticated = true;
-      }
+      await applyCookieString(cookieStr);
     } catch (e) {
       console.error("Cookie login failed:", (e as Error).message);
       if (loginBrowser) {

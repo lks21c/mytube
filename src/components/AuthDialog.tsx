@@ -2,6 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 
+declare global {
+  interface Window {
+    Android?: { startYouTubeLogin: () => void };
+    onYouTubeCookies?: (cookie: string) => void;
+  }
+}
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -13,6 +20,11 @@ export default function AuthDialog({ open, onClose, onAuthenticated }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [isWebView, setIsWebView] = useState(false);
+
+  useEffect(() => {
+    setIsWebView(typeof window !== "undefined" && !!window.Android);
+  }, []);
 
   useEffect(() => {
     const el = dialogRef.current;
@@ -30,7 +42,36 @@ export default function AuthDialog({ open, onClose, onAuthenticated }: Props) {
     };
   }, [open]);
 
-  async function handleLogin() {
+  async function handleWebViewLogin() {
+    setLoading(true);
+    setError(null);
+
+    window.onYouTubeCookies = async (cookie: string) => {
+      try {
+        const res = await fetch("/api/auth/cookie", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cookie }),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          setLoading(false);
+          onAuthenticated();
+          onClose();
+        } else {
+          setError(data.error || "쿠키 적용에 실패했습니다");
+          setLoading(false);
+        }
+      } catch {
+        setError("쿠키 전송에 실패했습니다");
+        setLoading(false);
+      }
+    };
+
+    window.Android!.startYouTubeLogin();
+  }
+
+  async function handleDesktopLogin() {
     setLoading(true);
     setError(null);
 
@@ -38,12 +79,15 @@ export default function AuthDialog({ open, onClose, onAuthenticated }: Props) {
       const res = await fetch("/api/auth", { method: "POST" });
       const data = await res.json();
       if (!data.ok) {
-        setError(data.error || "로그인 시작 실패");
+        if (data.needsCookieMethod) {
+          setError("서버에서 브라우저를 실행할 수 없습니다. WebView에서 접속해주세요.");
+        } else {
+          setError(data.error || "로그인 시작 실패");
+        }
         setLoading(false);
         return;
       }
 
-      // Poll for completion
       pollingRef.current = setInterval(async () => {
         try {
           const r = await fetch("/api/auth/status");
@@ -66,6 +110,14 @@ export default function AuthDialog({ open, onClose, onAuthenticated }: Props) {
     } catch {
       setError("로그인에 실패했습니다");
       setLoading(false);
+    }
+  }
+
+  function handleLogin() {
+    if (isWebView) {
+      handleWebViewLogin();
+    } else {
+      handleDesktopLogin();
     }
   }
 
@@ -126,7 +178,10 @@ export default function AuthDialog({ open, onClose, onAuthenticated }: Props) {
           <>
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-200 border-t-[var(--color-yt-red)]" />
             <p className="text-center text-sm text-[var(--color-yt-text)]">
-              Chrome 로그인 창에서<br />Google 계정으로 로그인해주세요
+              {isWebView
+                ? <>YouTube 로그인 화면에서<br />Google 계정으로 로그인해주세요</>
+                : <>Chrome 로그인 창에서<br />Google 계정으로 로그인해주세요</>
+              }
             </p>
             <p className="text-xs text-[var(--color-yt-text-secondary)]">
               로그인 완료 시 자동으로 진행됩니다
