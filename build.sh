@@ -17,32 +17,28 @@ if ! docker info > /dev/null 2>&1; then
     exit 1
 fi
 
-# 2. 기존 컨테이너 중지/제거
+# 2. 최신 코드 pull
+echo "📥 git pull..."
+git pull
+
+# 3. deps 이미지 없으면 자동 빌드
+if ! docker images -q mytube-deps:latest 2>/dev/null | grep -q .; then
+    echo "📦 mytube-deps 이미지 없음 → 빌드 중..."
+    docker build -f Dockerfile.deps -t mytube-deps:latest .
+fi
+
+# 4. Docker 이미지 빌드 (소스만, npm ci 스킵)
+echo "🔨 Docker 이미지 빌드 중 (소스만)..."
+docker build -t "$IMAGE_NAME:latest" .
+
+# 5. 기존 컨테이너 중지/제거
 if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
     echo "🛑 기존 ${CONTAINER_NAME} 컨테이너 중지/제거..."
     docker stop "$CONTAINER_NAME" 2>/dev/null || true
     docker rm "$CONTAINER_NAME" 2>/dev/null || true
 fi
 
-# 3. 최신 코드 pull
-echo "📥 git pull..."
-git pull
-
-# 4. deps 이미지 없으면 자동 빌드
-if ! docker image inspect mytube-deps:latest > /dev/null 2>&1; then
-    echo "📦 mytube-deps 이미지 없음 → 빌드 중..."
-    ./build-deps.sh
-fi
-
-# 5. Docker 이미지 빌드 (소스만, npm ci 스킵)
-echo "🔨 Docker 이미지 빌드 중 (소스만)..."
-docker build -t "$IMAGE_NAME:latest" .
-
-# 6. dangling 이미지 정리
-echo "🧹 dangling 이미지 정리..."
-docker image prune -f
-
-# 7. 새 컨테이너 시작
+# 6. 새 컨테이너 시작
 echo "🚀 새 컨테이너 시작..."
 docker run -d --restart=unless-stopped \
     -p ${PORT}:${PORT} \
@@ -50,6 +46,10 @@ docker run -d --restart=unless-stopped \
     -v /volume1/repo/mytube/mytube-cookies.json:/tmp/mytube-cookies.json \
     --name "$CONTAINER_NAME" \
     "$IMAGE_NAME:latest"
+
+# 7. dangling 이미지 정리
+echo "🧹 dangling 이미지 정리..."
+docker image prune -f
 
 # 8. 실행 확인
 echo ""
