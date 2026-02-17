@@ -1,0 +1,7 @@
+# mytube-deps — node_modules 캐시 이미지
+# package.json 변경 시만 빌드: ./build-deps.sh
+FROM node:24-alpine
+WORKDIR /app
+COPY package.json package-lock.json ./
+ENV PUPPETEER_SKIP_DOWNLOAD=true
+RUN npm ci

@@ -28,15 +28,21 @@ fi
 echo "📥 git pull..."
 git pull
 
-# 4. Docker 이미지 빌드
-echo "🔨 Docker 이미지 빌드 중..."
+# 4. deps 이미지 없으면 자동 빌드
+if ! docker image inspect mytube-deps:latest > /dev/null 2>&1; then
+    echo "📦 mytube-deps 이미지 없음 → 빌드 중..."
+    ./build-deps.sh
+fi
+
+# 5. Docker 이미지 빌드 (소스만, npm ci 스킵)
+echo "🔨 Docker 이미지 빌드 중 (소스만)..."
 docker build -t "$IMAGE_NAME:latest" .
 
-# 5. dangling 이미지 정리
+# 6. dangling 이미지 정리
 echo "🧹 dangling 이미지 정리..."
 docker image prune -f
 
-# 6. 새 컨테이너 시작
+# 7. 새 컨테이너 시작
 echo "🚀 새 컨테이너 시작..."
 docker run -d --restart=unless-stopped \
     -p ${PORT}:${PORT} \
@@ -45,7 +51,7 @@ docker run -d --restart=unless-stopped \
     --name "$CONTAINER_NAME" \
     "$IMAGE_NAME:latest"
 
-# 7. 실행 확인
+# 8. 실행 확인
 echo ""
 echo "✅ 컨테이너 상태:"
 docker ps --filter "name=${CONTAINER_NAME}" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
