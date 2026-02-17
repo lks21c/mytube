@@ -21,6 +21,8 @@ export default function AuthDialog({ open, onClose, onAuthenticated }: Props) {
   const [error, setError] = useState<string | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [isWebView, setIsWebView] = useState(false);
+  const [cookieMode, setCookieMode] = useState(false);
+  const [cookieText, setCookieText] = useState("");
 
   useEffect(() => {
     setIsWebView(typeof window !== "undefined" && !!window.Android);
@@ -37,6 +39,8 @@ export default function AuthDialog({ open, onClose, onAuthenticated }: Props) {
     if (!open) return;
     setError(null);
     setLoading(false);
+    setCookieMode(false);
+    setCookieText("");
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
@@ -80,7 +84,7 @@ export default function AuthDialog({ open, onClose, onAuthenticated }: Props) {
       const data = await res.json();
       if (!data.ok) {
         if (data.needsCookieMethod) {
-          setError("서버에서 브라우저를 실행할 수 없습니다. WebView에서 접속해주세요.");
+          setCookieMode(true);
         } else {
           setError(data.error || "로그인 시작 실패");
         }
@@ -109,6 +113,31 @@ export default function AuthDialog({ open, onClose, onAuthenticated }: Props) {
       }, 2000);
     } catch {
       setError("로그인에 실패했습니다");
+      setLoading(false);
+    }
+  }
+
+  async function handleCookieSubmit() {
+    if (!cookieText.trim()) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/auth/cookie", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cookie: cookieText.trim() }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setLoading(false);
+        onAuthenticated();
+        onClose();
+      } else {
+        setError(data.error || "쿠키 적용에 실패했습니다");
+        setLoading(false);
+      }
+    } catch {
+      setError("쿠키 전송에 실패했습니다");
       setLoading(false);
     }
   }
@@ -152,7 +181,7 @@ export default function AuthDialog({ open, onClose, onAuthenticated }: Props) {
 
       {/* Content */}
       <div className="flex flex-col items-center gap-4 px-5 py-8">
-        {!loading && !error && (
+        {!loading && !error && !cookieMode && (
           <>
             <svg className="h-12 w-12 text-[var(--color-yt-text-secondary)]" viewBox="0 0 24 24" fill="none">
               <path
@@ -174,6 +203,47 @@ export default function AuthDialog({ open, onClose, onAuthenticated }: Props) {
           </>
         )}
 
+        {cookieMode && !loading && (
+          <div className="flex w-full flex-col gap-3">
+            <div className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+              <p className="font-medium">서버에 Chrome이 없어 수동 쿠키 입력이 필요합니다</p>
+              <ol className="mt-1.5 list-inside list-decimal space-y-0.5">
+                <li>PC 브라우저에서 <b>youtube.com</b>에 로그인</li>
+                <li>F12 → Application → Cookies → youtube.com</li>
+                <li>모든 쿠키를 복사하여 아래에 붙여넣기</li>
+              </ol>
+              <p className="mt-1.5 text-[11px] text-amber-600">
+                형식: <code className="rounded bg-amber-100 px-1">NAME=VALUE; NAME2=VALUE2</code>
+              </p>
+            </div>
+            <textarea
+              value={cookieText}
+              onChange={(e) => setCookieText(e.target.value)}
+              placeholder="쿠키 문자열을 붙여넣으세요..."
+              rows={4}
+              className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-xs text-[var(--color-yt-text)] placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
+            />
+            {error && (
+              <div className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
+                {error}
+              </div>
+            )}
+            <button
+              onClick={handleCookieSubmit}
+              disabled={!cookieText.trim()}
+              className="rounded-full bg-blue-600 px-6 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              적용
+            </button>
+            <button
+              onClick={() => { setCookieMode(false); setError(null); }}
+              className="text-xs text-[var(--color-yt-text-secondary)] underline hover:text-[var(--color-yt-text)]"
+            >
+              취소
+            </button>
+          </div>
+        )}
+
         {loading && (
           <>
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-200 border-t-[var(--color-yt-red)]" />
@@ -189,7 +259,7 @@ export default function AuthDialog({ open, onClose, onAuthenticated }: Props) {
           </>
         )}
 
-        {error && (
+        {error && !cookieMode && (
           <div className="flex flex-col items-center gap-3">
             <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
               {error}
