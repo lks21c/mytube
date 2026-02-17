@@ -31,14 +31,20 @@ fi
 echo "🔨 Docker 이미지 빌드 중 (소스만)..."
 docker build -t "$IMAGE_NAME:latest" .
 
-# 5. 기존 컨테이너 중지/제거
+# 5. SQLite WAL flush (컨테이너 중지 전 DB 정리)
+if [ -f dev.db ]; then
+    echo "🗃️ SQLite WAL checkpoint..."
+    sqlite3 dev.db "PRAGMA wal_checkpoint(TRUNCATE);" 2>/dev/null || true
+fi
+
+# 6. 기존 컨테이너 중지/제거
 if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
     echo "🛑 기존 ${CONTAINER_NAME} 컨테이너 중지/제거..."
     docker stop "$CONTAINER_NAME" 2>/dev/null || true
     docker rm "$CONTAINER_NAME" 2>/dev/null || true
 fi
 
-# 6. 새 컨테이너 시작
+# 7. 새 컨테이너 시작
 echo "🚀 새 컨테이너 시작..."
 docker run -d --restart=unless-stopped \
     -p ${PORT}:${PORT} \
@@ -47,11 +53,11 @@ docker run -d --restart=unless-stopped \
     --name "$CONTAINER_NAME" \
     "$IMAGE_NAME:latest"
 
-# 7. dangling 이미지 정리
+# 8. dangling 이미지 정리
 echo "🧹 dangling 이미지 정리..."
 docker image prune -f
 
-# 8. 실행 확인
+# 9. 실행 확인
 echo ""
 echo "✅ 컨테이너 상태:"
 docker ps --filter "name=${CONTAINER_NAME}" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
