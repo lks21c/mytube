@@ -15,14 +15,19 @@ interface Props {
   onAuthenticated: () => void;
 }
 
+interface OAuthInfo {
+  verificationUrl: string;
+  userCode: string;
+}
+
 export default function AuthDialog({ open, onClose, onAuthenticated }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [isWebView, setIsWebView] = useState(false);
-  const [cookieMode, setCookieMode] = useState(false);
-  const [cookieText, setCookieText] = useState("");
+  const [oauthInfo, setOauthInfo] = useState<OAuthInfo | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     setIsWebView(typeof window !== "undefined" && !!window.Android);
@@ -39,12 +44,36 @@ export default function AuthDialog({ open, onClose, onAuthenticated }: Props) {
     if (!open) return;
     setError(null);
     setLoading(false);
-    setCookieMode(false);
-    setCookieText("");
+    setOauthInfo(null);
+    setCopied(false);
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
   }, [open]);
+
+  function startPolling() {
+    pollingRef.current = setInterval(async () => {
+      try {
+        const r = await fetch("/api/auth/status");
+        const status = await r.json();
+        if (status.authenticated) {
+          if (pollingRef.current) clearInterval(pollingRef.current);
+          setLoading(false);
+          setOauthInfo(null);
+          onAuthenticated();
+          onClose();
+        }
+        if (!status.loginInProgress && !status.authenticated) {
+          if (pollingRef.current) clearInterval(pollingRef.current);
+          setError("로그인이 취소되었습니다");
+          setLoading(false);
+          setOauthInfo(null);
+        }
+      } catch {
+        // ignore
+      }
+    }, 2000);
+  }
 
   async function handleWebViewLogin() {
     setLoading(true);
@@ -83,62 +112,38 @@ export default function AuthDialog({ open, onClose, onAuthenticated }: Props) {
       const res = await fetch("/api/auth", { method: "POST" });
       const data = await res.json();
       if (!data.ok) {
-        if (data.needsCookieMethod) {
-          setCookieMode(true);
-        } else {
-          setError(data.error || "로그인 시작 실패");
-        }
+        setError(data.error || "로그인 시작 실패");
         setLoading(false);
         return;
       }
 
-      pollingRef.current = setInterval(async () => {
-        try {
-          const r = await fetch("/api/auth/status");
-          const status = await r.json();
-          if (status.authenticated) {
-            if (pollingRef.current) clearInterval(pollingRef.current);
-            setLoading(false);
-            onAuthenticated();
-            onClose();
-          }
-          if (!status.loginInProgress && !status.authenticated) {
-            if (pollingRef.current) clearInterval(pollingRef.current);
-            setError("로그인이 취소되었습니다");
-            setLoading(false);
-          }
-        } catch {
-          // ignore
-        }
-      }, 2000);
+      // OAuth device code flow
+      if (data.oauth) {
+        setOauthInfo({
+          verificationUrl: data.verificationUrl,
+          userCode: data.userCode,
+        });
+        setLoading(false);
+        startPolling();
+        return;
+      }
+
+      // Puppeteer flow — poll for completion
+      startPolling();
     } catch {
       setError("로그인에 실패했습니다");
       setLoading(false);
     }
   }
 
-  async function handleCookieSubmit() {
-    if (!cookieText.trim()) return;
-    setLoading(true);
-    setError(null);
+  async function handleCopyCode() {
+    if (!oauthInfo) return;
     try {
-      const res = await fetch("/api/auth/cookie", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cookie: cookieText.trim() }),
-      });
-      const data = await res.json();
-      if (data.ok) {
-        setLoading(false);
-        onAuthenticated();
-        onClose();
-      } else {
-        setError(data.error || "쿠키 적용에 실패했습니다");
-        setLoading(false);
-      }
+      await navigator.clipboard.writeText(oauthInfo.userCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     } catch {
-      setError("쿠키 전송에 실패했습니다");
-      setLoading(false);
+      // fallback: select text
     }
   }
 
@@ -181,7 +186,8 @@ export default function AuthDialog({ open, onClose, onAuthenticated }: Props) {
 
       {/* Content */}
       <div className="flex flex-col items-center gap-4 px-5 py-8">
-        {!loading && !error && !cookieMode && (
+        {/* Initial state — login button */}
+        {!loading && !error && !oauthInfo && (
           <>
             <svg className="h-12 w-12 text-[var(--color-yt-text-secondary)]" viewBox="0 0 24 24" fill="none">
               <path
@@ -203,40 +209,65 @@ export default function AuthDialog({ open, onClose, onAuthenticated }: Props) {
           </>
         )}
 
-        {cookieMode && !loading && (
-          <div className="flex w-full flex-col gap-3">
-            <div className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
-              <p className="font-medium">서버에 Chrome이 없어 수동 쿠키 입력이 필요합니다</p>
-              <ol className="mt-1.5 list-inside list-decimal space-y-0.5">
-                <li>PC 브라우저에서 <b>youtube.com</b>에 로그인</li>
-                <li>F12 → Application → Cookies → youtube.com</li>
-                <li>모든 쿠키를 복사하여 아래에 붙여넣기</li>
-              </ol>
-              <p className="mt-1.5 text-[11px] text-amber-600">
-                형식: <code className="rounded bg-amber-100 px-1">NAME=VALUE; NAME2=VALUE2</code>
-              </p>
-            </div>
-            <textarea
-              value={cookieText}
-              onChange={(e) => setCookieText(e.target.value)}
-              placeholder="쿠키 문자열을 붙여넣으세요..."
-              rows={4}
-              className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-xs text-[var(--color-yt-text)] placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
-            />
-            {error && (
-              <div className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
-                {error}
-              </div>
-            )}
-            <button
-              onClick={handleCookieSubmit}
-              disabled={!cookieText.trim()}
-              className="rounded-full bg-blue-600 px-6 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+        {/* OAuth device code UI */}
+        {oauthInfo && !error && (
+          <div className="flex w-full flex-col items-center gap-4">
+            <p className="text-center text-sm text-[var(--color-yt-text)]">
+              아래 URL에서 코드를 입력하세요
+            </p>
+
+            <a
+              href={oauthInfo.verificationUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline"
             >
-              적용
-            </button>
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              {oauthInfo.verificationUrl}
+            </a>
+
+            <div className="flex items-center gap-2">
+              <code className="rounded-lg bg-gray-100 px-4 py-2.5 text-xl font-bold tracking-widest text-[var(--color-yt-text)]">
+                {oauthInfo.userCode}
+              </code>
+              <button
+                onClick={handleCopyCode}
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50"
+                aria-label="코드 복사"
+                title="코드 복사"
+              >
+                {copied ? (
+                  <svg className="h-4 w-4 text-green-600" viewBox="0 0 24 24" fill="none">
+                    <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                ) : (
+                  <svg className="h-4 w-4 text-gray-500" viewBox="0 0 24 24" fill="none">
+                    <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="2" />
+                    <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" strokeWidth="2" />
+                  </svg>
+                )}
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs text-[var(--color-yt-text-secondary)]">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-200 border-t-blue-500" />
+              인증 대기 중...
+            </div>
+
             <button
-              onClick={() => { setCookieMode(false); setError(null); }}
+              onClick={() => {
+                if (pollingRef.current) clearInterval(pollingRef.current);
+                setOauthInfo(null);
+                setLoading(false);
+              }}
               className="text-xs text-[var(--color-yt-text-secondary)] underline hover:text-[var(--color-yt-text)]"
             >
               취소
@@ -244,7 +275,8 @@ export default function AuthDialog({ open, onClose, onAuthenticated }: Props) {
           </div>
         )}
 
-        {loading && (
+        {/* Puppeteer loading state */}
+        {loading && !oauthInfo && (
           <>
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-200 border-t-[var(--color-yt-red)]" />
             <p className="text-center text-sm text-[var(--color-yt-text)]">
@@ -259,13 +291,17 @@ export default function AuthDialog({ open, onClose, onAuthenticated }: Props) {
           </>
         )}
 
-        {error && !cookieMode && (
+        {/* Error state */}
+        {error && (
           <div className="flex flex-col items-center gap-3">
             <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
               {error}
             </div>
             <button
-              onClick={handleLogin}
+              onClick={() => {
+                setError(null);
+                handleLogin();
+              }}
               className="text-sm text-blue-600 underline hover:text-blue-700"
             >
               다시 시도

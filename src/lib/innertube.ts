@@ -10,8 +10,12 @@ let savedCookie: string | null = null;
 let loginInProgress = false;
 let loginBrowser: Browser | null = null;
 
+// OAuth2 state
+let oauthPending: { verificationUrl: string; userCode: string } | null = null;
+
 const LOGIN_USER_DATA_DIR = path.join(os.tmpdir(), "mytube-chrome-login");
 const COOKIE_FILE = path.join(os.tmpdir(), "mytube-cookies.json");
+const OAUTH_FILE = path.join(os.tmpdir(), "mytube-oauth.json");
 
 function loadCookieFromDisk(): string | null {
   try {
@@ -33,9 +37,36 @@ function saveCookieToDisk(cookie: string): void {
   }
 }
 
+interface OAuthTokens {
+  access_token: string;
+  refresh_token: string;
+  expiry_date: string;
+}
+
+function loadOAuthTokens(): OAuthTokens | null {
+  try {
+    if (fs.existsSync(OAUTH_FILE)) {
+      const data = JSON.parse(fs.readFileSync(OAUTH_FILE, "utf-8"));
+      console.log("Loaded OAuth tokens from disk");
+      return data;
+    }
+  } catch {}
+  return null;
+}
+
+function saveOAuthTokens(credentials: OAuthTokens): void {
+  try {
+    fs.writeFileSync(OAUTH_FILE, JSON.stringify(credentials), "utf-8");
+    console.log("Saved OAuth tokens to disk");
+  } catch (e) {
+    console.error("Failed to save OAuth tokens:", (e as Error).message);
+  }
+}
+
 // Initialize from disk on module load
 savedCookie = loadCookieFromDisk();
-authenticated = !!savedCookie;
+let savedOAuthTokens = loadOAuthTokens();
+authenticated = !!(savedCookie || savedOAuthTokens);
 
 export async function getInnertube(): Promise<Innertube> {
   if (!instance) {
@@ -45,7 +76,34 @@ export async function getInnertube(): Promise<Innertube> {
       location: "KR",
       ...(savedCookie ? { cookie: savedCookie } : {}),
     });
-    authenticated = !!savedCookie;
+
+    // Restore OAuth session from saved tokens (when no cookie auth)
+    if (!savedCookie && savedOAuthTokens) {
+      try {
+        console.log("Restoring OAuth session from saved tokens...");
+        instance.session.on("update-credentials", ({ credentials }) => {
+          saveOAuthTokens(credentials as OAuthTokens);
+          console.log("OAuth tokens refreshed and saved");
+        });
+        instance.session.on("auth-error", (err) => {
+          console.error("OAuth auth error during restore:", err.message);
+          authenticated = false;
+          savedOAuthTokens = null;
+          try { fs.unlinkSync(OAUTH_FILE); } catch {}
+        });
+        await instance.session.signIn(savedOAuthTokens);
+        authenticated = true;
+        console.log("OAuth session restored successfully");
+      } catch (e) {
+        console.error("Failed to restore OAuth session:", (e as Error).message);
+        savedOAuthTokens = null;
+        try { fs.unlinkSync(OAUTH_FILE); } catch {}
+        authenticated = false;
+      }
+    } else {
+      authenticated = !!savedCookie;
+    }
+
     console.log("Innertube ready, authenticated:", authenticated);
   }
   return instance;
@@ -74,6 +132,73 @@ export async function applyCookieString(cookieStr: string): Promise<boolean> {
     authenticated = true;
   }
   return authenticated;
+}
+
+/**
+ * Start OAuth2 Device Code Flow.
+ * Returns verification URL + user code immediately when auth-pending fires.
+ * Authentication completes asynchronously when user enters the code.
+ */
+export async function startOAuthLogin(): Promise<{
+  verificationUrl: string;
+  userCode: string;
+}> {
+  if (loginInProgress) {
+    if (oauthPending) return oauthPending;
+    throw new Error("로그인이 이미 진행 중입니다");
+  }
+
+  loginInProgress = true;
+  oauthPending = null;
+
+  // Create a fresh instance for OAuth
+  const yt = await Innertube.create({
+    lang: "ko",
+    location: "KR",
+  });
+
+  return new Promise((resolve, reject) => {
+    // Fired when device code is ready for user
+    yt.session.on("auth-pending", (data) => {
+      console.log(`OAuth: Go to ${data.verification_url} and enter code: ${data.user_code}`);
+      oauthPending = {
+        verificationUrl: data.verification_url,
+        userCode: data.user_code,
+      };
+      resolve(oauthPending);
+    });
+
+    // Fired when user completes authentication
+    yt.session.on("auth", ({ credentials }) => {
+      console.log("OAuth: Authentication successful!");
+      saveOAuthTokens(credentials as OAuthTokens);
+      savedOAuthTokens = credentials as OAuthTokens;
+      instance = yt;
+      authenticated = true;
+      loginInProgress = false;
+      oauthPending = null;
+    });
+
+    // Fired when tokens are refreshed
+    yt.session.on("update-credentials", ({ credentials }) => {
+      saveOAuthTokens(credentials as OAuthTokens);
+      console.log("OAuth tokens refreshed and saved");
+    });
+
+    yt.session.on("auth-error", (err) => {
+      console.error("OAuth auth error:", err.message);
+      loginInProgress = false;
+      oauthPending = null;
+      reject(new Error("OAuth 인증에 실패했습니다: " + err.message));
+    });
+
+    // Start the sign-in flow (don't await — it blocks until user completes)
+    yt.session.signIn().catch((e) => {
+      console.error("OAuth signIn error:", e.message);
+      loginInProgress = false;
+      oauthPending = null;
+    });
+  });
 }
 
 /**
@@ -161,15 +286,26 @@ export async function startCookieLogin(): Promise<void> {
 export function getAuthStatus(): {
   authenticated: boolean;
   loginInProgress: boolean;
+  oauthPending: { verificationUrl: string; userCode: string } | null;
 } {
-  return { authenticated, loginInProgress };
+  return { authenticated, loginInProgress, oauthPending };
 }
 
 export async function signOut(): Promise<void> {
+  // Sign out from OAuth session if active
+  if (instance && savedOAuthTokens) {
+    try {
+      await instance.session.signOut();
+    } catch {}
+  }
+
   savedCookie = null;
+  savedOAuthTokens = null;
   authenticated = false;
   instance = null;
+  oauthPending = null;
   try { fs.unlinkSync(COOKIE_FILE); } catch {}
+  try { fs.unlinkSync(OAUTH_FILE); } catch {}
 }
 
 export function isAuthenticated(): boolean {

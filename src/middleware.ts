@@ -6,7 +6,7 @@ const SECRET = new TextEncoder().encode(
 );
 
 const PUBLIC_PATHS = ["/login", "/api/login"];
-const PUBLIC_PREFIXES = ["/_next", "/favicon.ico", "/manifest.json"];
+const PUBLIC_PREFIXES = ["/_next", "/favicon.ico", "/manifest.json", "/api/auth"];
 
 function isPublic(pathname: string) {
   if (PUBLIC_PATHS.includes(pathname)) return true;

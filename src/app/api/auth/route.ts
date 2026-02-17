@@ -1,21 +1,28 @@
 import { NextResponse } from "next/server";
-import { startCookieLogin, signOut } from "@/lib/innertube";
+import { startCookieLogin, startOAuthLogin, signOut } from "@/lib/innertube";
 
 export async function POST() {
+  // Try Puppeteer (Chrome) login first
   try {
     await startCookieLogin();
     return NextResponse.json({ ok: true });
+  } catch {
+    // Chrome/Puppeteer not available — fall through to OAuth
+  }
+
+  // Fallback: OAuth2 Device Code Flow
+  try {
+    const oauthInfo = await startOAuthLogin();
+    return NextResponse.json({
+      ok: true,
+      oauth: true,
+      verificationUrl: oauthInfo.verificationUrl,
+      userCode: oauthInfo.userCode,
+    });
   } catch (e) {
-    const message = (e as Error).message;
-    const isPuppeteerMissing = message.includes("Puppeteer") || message.includes("쿠키를 직접");
     return NextResponse.json(
-      {
-        error: isPuppeteerMissing
-          ? "서버에서 브라우저를 실행할 수 없습니다. 쿠키를 직접 전달해주세요."
-          : "로그인 시작에 실패했습니다",
-        needsCookieMethod: isPuppeteerMissing,
-      },
-      { status: isPuppeteerMissing ? 501 : 500 }
+      { error: (e as Error).message },
+      { status: 500 }
     );
   }
 }
