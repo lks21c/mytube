@@ -46,6 +46,11 @@ export default function Header({ summaryMode, onSummaryModeChange }: Props) {
     window.location.reload();
   }
 
+  async function handleSiteLogout() {
+    await fetch("/api/login", { method: "DELETE" });
+    window.location.href = "/login";
+  }
+
   return (
     <>
       <header className="sticky top-0 z-50 flex h-14 items-center justify-between gap-4 border-b border-[var(--color-yt-border)] bg-white px-4">
@@ -111,30 +116,47 @@ export default function Header({ summaryMode, onSummaryModeChange }: Props) {
           </button>
         </form>
 
-        {/* Auth button */}
-        {authenticated ? (
+        {/* Auth buttons */}
+        <div className="flex shrink-0 items-center gap-2">
+          {authenticated ? (
+            <button
+              onClick={handleSignOut}
+              className="shrink-0 rounded-full border border-[var(--color-yt-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-yt-text-secondary)] hover:bg-[var(--color-yt-hover)]"
+            >
+              로그아웃
+            </button>
+          ) : (
+            <button
+              onClick={() => setAuthOpen(true)}
+              className="flex shrink-0 items-center gap-1.5 rounded-full border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+              로그인
+            </button>
+          )}
           <button
-            onClick={handleSignOut}
-            className="shrink-0 rounded-full border border-[var(--color-yt-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-yt-text-secondary)] hover:bg-[var(--color-yt-hover)]"
-          >
-            로그아웃
-          </button>
-        ) : (
-          <button
-            onClick={() => setAuthOpen(true)}
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50"
+            onClick={handleSiteLogout}
+            title="사이트 로그아웃"
+            className="rounded-full p-2 text-[var(--color-yt-text-secondary)] hover:bg-[var(--color-yt-hover)]"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
               <path
-                d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z"
+                d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"
                 stroke="currentColor"
                 strokeWidth="2"
                 strokeLinecap="round"
+                strokeLinejoin="round"
               />
             </svg>
-            로그인
           </button>
-        )}
+        </div>
       </header>
 
       <AuthDialog
