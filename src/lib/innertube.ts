@@ -93,23 +93,31 @@ export async function startCookieLogin(): Promise<void> {
     throw new Error("Puppeteer를 사용할 수 없습니다. 쿠키를 직접 전달해주세요.");
   }
 
+  // Launch Chrome synchronously — fail fast if executable missing
+  try {
+    console.log("Launching Chrome for YouTube login...");
+    loginBrowser = await puppeteer.launch({
+      headless: false,
+      channel: "chrome",
+      userDataDir: LOGIN_USER_DATA_DIR,
+      args: [
+        "--no-first-run",
+        "--no-default-browser-check",
+        "--disable-blink-features=AutomationControlled",
+        "--window-size=500,700",
+      ],
+      ignoreDefaultArgs: ["--enable-automation"],
+    });
+  } catch (e) {
+    loginInProgress = false;
+    console.error("Chrome launch failed:", (e as Error).message);
+    throw new Error("Chrome을 찾을 수 없습니다. 쿠키를 직접 전달해주세요.");
+  }
+
+  // Chrome launched — continue login flow in background
   (async () => {
     try {
-      console.log("Launching Chrome for YouTube login...");
-      loginBrowser = await puppeteer.launch({
-        headless: false,
-        channel: "chrome",
-        userDataDir: LOGIN_USER_DATA_DIR,
-        args: [
-          "--no-first-run",
-          "--no-default-browser-check",
-          "--disable-blink-features=AutomationControlled",
-          "--window-size=500,700",
-        ],
-        ignoreDefaultArgs: ["--enable-automation"],
-      });
-
-      const page = await loginBrowser.newPage();
+      const page = await loginBrowser!.newPage();
       await page.evaluateOnNewDocument(() => {
         Object.defineProperty(navigator, "webdriver", { get: () => undefined });
       });
@@ -134,7 +142,7 @@ export async function startCookieLogin(): Promise<void> {
 
       console.log("Got", cookies.length, "cookies from YouTube");
 
-      await loginBrowser.close();
+      await loginBrowser!.close();
       loginBrowser = null;
 
       await applyCookieString(cookieStr);
