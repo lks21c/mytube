@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getInnertube, isAuthenticated } from "@/lib/innertube";
+import { getInnertube, isAuthenticated, resetInstance } from "@/lib/innertube";
 import { extractVideo, extractLockupView } from "@/lib/extractVideo";
 import type { VideoItem } from "@/types/video";
 
@@ -84,6 +84,33 @@ export async function GET(request: NextRequest) {
           console.log("Feed: using search fallback");
         } catch (e) {
           console.log("Feed: search fallback failed:", (e as Error).message);
+        }
+      }
+
+      // All sources failed — reset instance and retry unauthenticated
+      if (!feed) {
+        console.log("Feed: all sources failed, resetting Innertube instance...");
+        resetInstance();
+        const freshYt = await getInnertube();
+
+        try {
+          const trending = await freshYt.getTrending();
+          const testItems = extractAllVideos(trending);
+          if (testItems.length > 0) {
+            feed = trending;
+            console.log("Feed: recovery using trending,", testItems.length, "videos");
+          }
+        } catch (e) {
+          console.log("Feed: recovery trending failed:", (e as Error).message);
+        }
+
+        if (!feed) {
+          try {
+            feed = await freshYt.search("한국 인기 영상 2025", { type: "video" });
+            console.log("Feed: recovery using search fallback");
+          } catch (e) {
+            console.log("Feed: recovery search failed:", (e as Error).message);
+          }
         }
       }
 

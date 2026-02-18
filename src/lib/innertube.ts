@@ -128,8 +128,11 @@ export async function applyCookieString(cookieStr: string): Promise<boolean> {
       return true;
     }
   } catch (e) {
-    console.log("Home feed test failed, but cookies applied:", (e as Error).message);
-    authenticated = true;
+    console.log("Home feed test failed, cookies invalid:", (e as Error).message);
+    authenticated = false;
+    savedCookie = null;
+    instance = null;
+    try { fs.unlinkSync(COOKIE_FILE); } catch {}
   }
   return authenticated;
 }
@@ -281,6 +284,14 @@ export async function startCookieLogin(): Promise<void> {
       loginInProgress = false;
     }
   })();
+}
+
+export function resetInstance(): void {
+  instance = null;
+  authenticated = false;
+  savedCookie = null;
+  savedOAuthTokens = null;
+  console.log("Innertube instance reset (unauthenticated)");
 }
 
 export function getAuthStatus(): {
