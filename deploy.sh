@@ -22,7 +22,11 @@ echo "SSH 접속: $REMOTE_HOST"
 echo ""
 
 echo "🚀 restart.sh 원격 실행 중..."
-ssh $REMOTE_HOST "export PATH=/usr/local/bin:\$PATH && cd $REMOTE_DIR && ./restart.sh"
+if ! ssh $REMOTE_HOST "export PATH=/usr/local/bin:\$PATH && cd $REMOTE_DIR && ./restart.sh"; then
+    REMOTE_HOST="hydra01@hydra01.asuscomm.com"
+    echo "⚠️ 실패 → ${REMOTE_HOST} 로 재시도..."
+    ssh $REMOTE_HOST "export PATH=/usr/local/bin:\$PATH && cd $REMOTE_DIR && ./restart.sh"
+fi
 
 echo ""
 echo "=== 배포 완료 ==="
