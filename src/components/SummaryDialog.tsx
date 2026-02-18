@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface Props {
   open: boolean;
@@ -18,6 +18,18 @@ export default function SummaryDialog({
   onClose,
 }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(async () => {
+    if (!summary) return;
+    try {
+      await navigator.clipboard.writeText(summary);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // fallback
+    }
+  }, [summary]);
 
   useEffect(() => {
     const el = dialogRef.current;
@@ -39,11 +51,50 @@ export default function SummaryDialog({
         <h2 className="text-base font-semibold text-[var(--color-yt-text)]">
           AI 요약
         </h2>
-        <button
-          onClick={onClose}
-          className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-[var(--color-yt-hover)]"
-          aria-label="닫기"
-        >
+        <div className="flex items-center gap-1">
+          {summary && (
+            <button
+              onClick={handleCopy}
+              className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-[var(--color-yt-hover)]"
+              aria-label="복사"
+              title={copied ? "복사됨!" : "복사"}
+            >
+              {copied ? (
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M5 13l4 4L19 7"
+                    stroke="#16a34a"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              ) : (
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <rect
+                    x="9"
+                    y="9"
+                    width="11"
+                    height="11"
+                    rx="2"
+                    stroke="#606060"
+                    strokeWidth="2"
+                  />
+                  <path
+                    d="M5 15V5a2 2 0 012-2h10"
+                    stroke="#606060"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              )}
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-[var(--color-yt-hover)]"
+            aria-label="닫기"
+          >
           <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none">
             <path
               d="M18 6L6 18M6 6l12 12"
@@ -51,8 +102,9 @@ export default function SummaryDialog({
               strokeWidth="2"
               strokeLinecap="round"
             />
-          </svg>
-        </button>
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Content */}
