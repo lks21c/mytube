@@ -1,4 +1,5 @@
 FROM node:24-alpine
+RUN apk add --no-cache python3 make g++
 WORKDIR /app/mytube
 ENV NEXT_TELEMETRY_DISABLED=1 PUPPETEER_SKIP_DOWNLOAD=true PORT=3434
 COPY entrypoint.sh /entrypoint.sh

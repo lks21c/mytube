@@ -43,6 +43,7 @@ mytube-cookies.json
 mytube-oauth.json
 
 # sqlite
+*.db
 *.db-shm
 *.db-wal
 
