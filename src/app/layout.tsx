@@ -1,10 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
-import EnvIndicator from "@/components/EnvIndicator";
 import "./globals.css";
 
+const isLocal = process.env.NEXT_PUBLIC_APP_ENV === "local";
+
 export const metadata: Metadata = {
-  title: "MyTube - YouTube + AI 요약",
+  title: isLocal ? "[DEV] MyTube" : "MyTube - YouTube + AI 요약",
   description: "유튜브 영상을 AI로 한국어 요약하세요.",
   manifest: "/manifest.json",
   appleWebApp: {
@@ -28,10 +29,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
-      <body className={`${GeistSans.variable} antialiased`}>
-        <EnvIndicator />
-        {children}
-      </body>
+      <body className={`${GeistSans.variable} antialiased`}>{children}</body>
     </html>
   );
 }

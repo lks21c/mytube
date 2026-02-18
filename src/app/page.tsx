@@ -20,8 +20,12 @@ function HomeContent() {
     isCached,
   } = useSummary();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [summaryVideoId, setSummaryVideoId] = useState<string>();
+  const [summaryVideoTitle, setSummaryVideoTitle] = useState<string>();
 
-  function handleSummarize(videoId: string) {
+  function handleSummarize(videoId: string, title: string) {
+    setSummaryVideoId(videoId);
+    setSummaryVideoTitle(title);
     setDialogOpen(true);
     summarize(videoId);
   }
@@ -64,6 +68,8 @@ function HomeContent() {
         summary={summary}
         error={summaryError}
         onClose={handleClose}
+        videoTitle={summaryVideoTitle}
+        videoId={summaryVideoId}
       />
     </div>
   );

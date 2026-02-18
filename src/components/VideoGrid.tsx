@@ -6,7 +6,7 @@ import type { VideoItem } from "@/types/video";
 
 interface Props {
   videos: VideoItem[];
-  onSummarize: (videoId: string) => void;
+  onSummarize: (videoId: string, title: string) => void;
   isCached?: (videoId: string) => boolean;
   loadingMore?: boolean;
   hasMore?: boolean;

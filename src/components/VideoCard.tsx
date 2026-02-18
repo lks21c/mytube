@@ -7,7 +7,7 @@ import type { VideoItem } from "@/types/video";
 
 interface Props {
   video: VideoItem;
-  onSummarize: (videoId: string) => void;
+  onSummarize: (videoId: string, title: string) => void;
   cached?: boolean;
 }
 
@@ -108,7 +108,7 @@ export default function VideoCard({ video, onSummarize, cached }: Props) {
 
         {/* Summary button */}
         <button
-          onClick={() => onSummarize(video.id)}
+          onClick={() => onSummarize(video.id, video.title)}
           className={`mt-0.5 h-8 shrink-0 rounded-full px-3 text-xs font-medium text-white ${
             cached
               ? "bg-gray-400 hover:bg-gray-500"

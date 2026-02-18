@@ -8,6 +8,8 @@ interface Props {
   summary: string | null;
   error: string | null;
   onClose: () => void;
+  videoTitle?: string;
+  videoId?: string;
 }
 
 export default function SummaryDialog({
@@ -16,6 +18,8 @@ export default function SummaryDialog({
   summary,
   error,
   onClose,
+  videoTitle,
+  videoId,
 }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [copied, setCopied] = useState(false);
@@ -23,13 +27,17 @@ export default function SummaryDialog({
   const handleCopy = useCallback(async () => {
     if (!summary) return;
     try {
-      await navigator.clipboard.writeText(summary);
+      let text = summary;
+      if (videoTitle && videoId) {
+        text += `\n\n참고: ${videoTitle}\nhttps://www.youtube.com/watch?v=${videoId}`;
+      }
+      await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // fallback
     }
-  }, [summary]);
+  }, [summary, videoTitle, videoId]);
 
   useEffect(() => {
     const el = dialogRef.current;
@@ -123,10 +131,25 @@ export default function SummaryDialog({
           </div>
         )}
         {summary && (
-          <div
-            className="summary-content text-sm leading-relaxed text-[var(--color-yt-text)]"
-            dangerouslySetInnerHTML={{ __html: formatSummary(summary) }}
-          />
+          <>
+            <div
+              className="summary-content text-sm leading-relaxed text-[var(--color-yt-text)]"
+              dangerouslySetInnerHTML={{ __html: formatSummary(summary) }}
+            />
+            {videoTitle && videoId && (
+              <div className="mt-4 border-t border-[var(--color-yt-border)] pt-3 text-xs text-[var(--color-yt-text-secondary)]">
+                참고:{" "}
+                <a
+                  href={`https://www.youtube.com/watch?v=${videoId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[var(--color-yt-blue,#065fd4)] hover:underline"
+                >
+                  {videoTitle}
+                </a>
+              </div>
+            )}
+          </>
         )}
       </div>
     </dialog>

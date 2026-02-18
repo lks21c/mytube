@@ -21,6 +21,8 @@ function HistoryContent() {
     isCached,
   } = useSummary();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [summaryVideoId, setSummaryVideoId] = useState<string>();
+  const [summaryVideoTitle, setSummaryVideoTitle] = useState<string>();
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -37,7 +39,9 @@ function HistoryContent() {
     return () => observer.disconnect();
   }, [loadMore, hasMore]);
 
-  function handleSummarize(videoId: string) {
+  function handleSummarize(videoId: string, title: string) {
+    setSummaryVideoId(videoId);
+    setSummaryVideoTitle(title);
     setDialogOpen(true);
     summarize(videoId);
   }
@@ -111,6 +115,8 @@ function HistoryContent() {
         summary={summary}
         error={summaryError}
         onClose={handleClose}
+        videoTitle={summaryVideoTitle}
+        videoId={summaryVideoId}
       />
     </div>
   );

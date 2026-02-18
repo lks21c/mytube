@@ -143,7 +143,20 @@ export default function AuthDialog({ open, onClose, onAuthenticated }: Props) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // fallback: select text
+      try {
+        const textarea = document.createElement("textarea");
+        textarea.value = oauthInfo.userCode;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch {
+        alert("복사에 실패했습니다. 직접 코드를 선택하여 복사해주세요.");
+      }
     }
   }
 
