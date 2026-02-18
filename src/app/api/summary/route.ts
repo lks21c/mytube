@@ -7,7 +7,7 @@ import {
 import { GEMINI_MODEL, withGemini } from "@/lib/gemini";
 import { openrouter, MODEL } from "@/lib/openrouter";
 import { getInnertube } from "@/lib/innertube";
-import { getCachedSummary, setCachedSummary } from "@/lib/db";
+import { getCachedSummary, setCachedSummary, getCachedVideoIds } from "@/lib/db";
 
 type SummaryMode = "openrouter" | "gemini";
 
@@ -79,6 +79,28 @@ async function summarizeWithGemini(videoId: string): Promise<string> {
     });
     return response.text ?? "";
   });
+}
+
+// 서버 SQLite 캐시 존재 여부 배치 조회
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const videoIds = searchParams.get("videoIds")?.split(",").filter(Boolean) ?? [];
+    const mode = searchParams.get("mode") || "openrouter";
+
+    if (videoIds.length === 0) {
+      return NextResponse.json({ cachedIds: [] });
+    }
+
+    const cachedIds = getCachedVideoIds(videoIds, mode);
+    return NextResponse.json({ cachedIds });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    return NextResponse.json(
+      { error: "캐시 조회 실패", detail: msg },
+      { status: 500 }
+    );
+  }
 }
 
 // localStorage → SQLite 일괄 마이그레이션

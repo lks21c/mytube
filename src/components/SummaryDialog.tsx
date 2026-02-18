@@ -23,6 +23,10 @@ function buildShareText(
   return summary;
 }
 
+function getYoutubeUrl(videoId?: string): string {
+  return videoId ? `https://www.youtube.com/watch?v=${videoId}` : "";
+}
+
 export default function SummaryDialog({
   open,
   loading,
@@ -33,12 +37,22 @@ export default function SummaryDialog({
   videoId,
 }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const shareMenuRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
-  const [canShare, setCanShare] = useState(false);
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [shareToast, setShareToast] = useState(false);
 
+  // 클릭 외부 감지로 공유 메뉴 닫기
   useEffect(() => {
-    setCanShare(typeof navigator !== "undefined" && !!navigator.share);
-  }, []);
+    if (!showShareMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (shareMenuRef.current && !shareMenuRef.current.contains(e.target as Node)) {
+        setShowShareMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showShareMenu]);
 
   const handleCopy = useCallback(async () => {
     if (!summary) return;
@@ -53,23 +67,58 @@ export default function SummaryDialog({
     }
   }, [summary, videoTitle, videoId]);
 
-  const handleShare = useCallback(async () => {
-    if (!summary) return;
-    try {
-      await navigator.share({
-        title: videoTitle ? `📺 ${videoTitle}` : "AI 요약",
-        text: buildShareText(summary, videoTitle, videoId),
-      });
-    } catch {
-      // 사용자가 공유 취소
-    }
-  }, [summary, videoTitle, videoId]);
+  const handleShareTo = useCallback(
+    (service: string) => {
+      if (!summary) return;
+      const youtubeUrl = getYoutubeUrl(videoId);
+      const shortText = videoTitle
+        ? `📺 ${videoTitle} — MyTube AI 요약`
+        : "MyTube AI 요약";
+      const fullText = buildShareText(summary, videoTitle, videoId);
+
+      switch (service) {
+        case "kakao": {
+          navigator.clipboard.writeText(fullText).then(() => {
+            setShareToast(true);
+            setTimeout(() => setShareToast(false), 2500);
+          });
+          break;
+        }
+        case "x":
+          window.open(
+            `https://twitter.com/intent/tweet?text=${encodeURIComponent(shortText)}&url=${encodeURIComponent(youtubeUrl)}`,
+            "_blank",
+          );
+          break;
+        case "facebook":
+          window.open(
+            `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(youtubeUrl)}`,
+            "_blank",
+          );
+          break;
+        case "line":
+          window.open(
+            `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(youtubeUrl)}&text=${encodeURIComponent(shortText)}`,
+            "_blank",
+          );
+          break;
+        case "email":
+          window.open(
+            `mailto:?subject=${encodeURIComponent(shortText)}&body=${encodeURIComponent(fullText)}`,
+          );
+          break;
+      }
+      setShowShareMenu(false);
+    },
+    [summary, videoTitle, videoId],
+  );
 
   useEffect(() => {
     const el = dialogRef.current;
     if (!el) return;
     if (open && !el.open) el.showModal();
     if (!open && el.open) el.close();
+    if (!open) setShowShareMenu(false);
   }, [open]);
 
   if (!open) return null;
@@ -86,23 +135,91 @@ export default function SummaryDialog({
           AI 요약
         </h2>
         <div className="flex items-center gap-1">
-          {summary && canShare && (
-            <button
-              onClick={handleShare}
-              className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-[var(--color-yt-hover)]"
-              aria-label="공유"
-              title="공유"
-            >
-              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M4 12v7a2 2 0 002 2h12a2 2 0 002-2v-7M16 6l-4-4-4 4M12 2v13"
-                  stroke="#606060"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
+          {summary && (
+            <div className="relative" ref={shareMenuRef}>
+              <button
+                onClick={() => setShowShareMenu((v) => !v)}
+                className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-[var(--color-yt-hover)]"
+                aria-label="공유"
+                title="공유"
+              >
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M4 12v7a2 2 0 002 2h12a2 2 0 002-2v-7M16 6l-4-4-4 4M12 2v13"
+                    stroke="#606060"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+              {showShareMenu && (
+                <div className="absolute right-0 top-10 z-50 rounded-xl bg-white p-3 shadow-lg ring-1 ring-black/5">
+                  <div className="flex items-center gap-3">
+                    {/* 카카오톡 */}
+                    <button
+                      onClick={() => handleShareTo("kakao")}
+                      className="flex flex-col items-center gap-1"
+                      title="카카오톡"
+                    >
+                      <span className="flex h-10 w-10 items-center justify-center rounded-full" style={{ background: "#FEE500" }}>
+                        <svg className="h-5 w-5" viewBox="0 0 24 24" fill="#3C1E1E">
+                          <path d="M12 3C6.48 3 2 6.58 2 10.9c0 2.78 1.8 5.22 4.51 6.6l-.96 3.53c-.08.28.25.5.49.33l4.09-2.72c.61.08 1.24.13 1.87.13 5.52 0 10-3.58 10-7.97C22 6.58 17.52 3 12 3z" />
+                        </svg>
+                      </span>
+                      <span className="text-[10px] text-gray-500">카카오톡</span>
+                    </button>
+                    {/* X (Twitter) */}
+                    <button
+                      onClick={() => handleShareTo("x")}
+                      className="flex flex-col items-center gap-1"
+                      title="X"
+                    >
+                      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black text-white text-sm font-bold">
+                        𝕏
+                      </span>
+                      <span className="text-[10px] text-gray-500">X</span>
+                    </button>
+                    {/* Facebook */}
+                    <button
+                      onClick={() => handleShareTo("facebook")}
+                      className="flex flex-col items-center gap-1"
+                      title="Facebook"
+                    >
+                      <span className="flex h-10 w-10 items-center justify-center rounded-full text-white text-lg font-bold" style={{ background: "#1877F2" }}>
+                        f
+                      </span>
+                      <span className="text-[10px] text-gray-500">Facebook</span>
+                    </button>
+                    {/* LINE */}
+                    <button
+                      onClick={() => handleShareTo("line")}
+                      className="flex flex-col items-center gap-1"
+                      title="LINE"
+                    >
+                      <span className="flex h-10 w-10 items-center justify-center rounded-full text-white text-[10px] font-bold" style={{ background: "#06C755" }}>
+                        LINE
+                      </span>
+                      <span className="text-[10px] text-gray-500">LINE</span>
+                    </button>
+                    {/* 이메일 */}
+                    <button
+                      onClick={() => handleShareTo("email")}
+                      className="flex flex-col items-center gap-1"
+                      title="이메일"
+                    >
+                      <span className="flex h-10 w-10 items-center justify-center rounded-full" style={{ background: "#606060" }}>
+                        <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none">
+                          <rect x="3" y="5" width="18" height="14" rx="2" stroke="white" strokeWidth="2" />
+                          <path d="M3 7l9 6 9-6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </span>
+                      <span className="text-[10px] text-gray-500">이메일</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
           {summary && (
             <button
@@ -196,6 +313,13 @@ export default function SummaryDialog({
           </>
         )}
       </div>
+
+      {/* 카카오톡 클립보드 복사 토스트 */}
+      {shareToast && (
+        <div className="fixed bottom-6 left-1/2 z-[100] -translate-x-1/2 rounded-lg bg-gray-800 px-4 py-2.5 text-sm text-white shadow-lg">
+          텍스트가 복사되었습니다. 카카오톡에 붙여넣기 해주세요
+        </div>
+      )}
     </dialog>
   );
 }

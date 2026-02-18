@@ -35,6 +35,7 @@ export function useSummary() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mode, setModeState] = useState<SummaryMode>(getSavedMode);
+  const [serverCachedIds, setServerCachedIds] = useState<Set<string>>(new Set());
 
   // localStorage → SQLite 일회성 마이그레이션
   useEffect(() => {
@@ -69,6 +70,30 @@ export function useSummary() {
     } catch {}
   }, []);
 
+  const loadCachedIds = useCallback(
+    async (videoIds: string[]) => {
+      if (videoIds.length === 0) return;
+      try {
+        const params = new URLSearchParams({
+          videoIds: videoIds.join(","),
+          mode,
+        });
+        const res = await fetch(`/api/summary?${params}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const ids: string[] = data.cachedIds ?? [];
+        if (ids.length > 0) {
+          setServerCachedIds((prev) => {
+            const next = new Set(prev);
+            for (const id of ids) next.add(id);
+            return next;
+          });
+        }
+      } catch {}
+    },
+    [mode]
+  );
+
   const setMode = useCallback((m: SummaryMode) => {
     setModeState(m);
     try {
@@ -98,6 +123,7 @@ export function useSummary() {
         const data = await res.json();
         setSummary(data.summary);
         setCache(mode, videoId, data.summary);
+        setServerCachedIds((prev) => new Set(prev).add(videoId));
       } catch (err) {
         setError(err instanceof Error ? err.message : "요약 중 오류 발생");
       } finally {
@@ -114,9 +140,10 @@ export function useSummary() {
   }, []);
 
   const isCached = useCallback(
-    (videoId: string) => getCached(mode, videoId) !== null,
-    [mode]
+    (videoId: string) =>
+      getCached(mode, videoId) !== null || serverCachedIds.has(videoId),
+    [mode, serverCachedIds]
   );
 
-  return { summary, loading, error, summarize, reset, mode, setMode, isCached };
+  return { summary, loading, error, summarize, reset, mode, setMode, isCached, loadCachedIds };
 }

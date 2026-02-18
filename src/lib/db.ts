@@ -30,6 +30,20 @@ export function getCachedSummary(
   return row?.summary ?? null;
 }
 
+export function getCachedVideoIds(
+  videoIds: string[],
+  mode: string
+): string[] {
+  if (videoIds.length === 0) return [];
+  const placeholders = videoIds.map(() => "?").join(",");
+  const rows = getDb()
+    .prepare(
+      `SELECT videoId FROM summaries WHERE mode = ? AND videoId IN (${placeholders})`
+    )
+    .all(mode, ...videoIds) as { videoId: string }[];
+  return rows.map((r) => r.videoId);
+}
+
 export function setCachedSummary(
   videoId: string,
   mode: string,

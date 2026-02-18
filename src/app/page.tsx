@@ -5,7 +5,7 @@ import VideoGrid from "@/components/VideoGrid";
 import SummaryDialog from "@/components/SummaryDialog";
 import { useFeed } from "@/hooks/useFeed";
 import { useSummary } from "@/hooks/useSummary";
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 
 function HomeContent() {
   const { videos, loading, loadingMore, hasMore, error, loadMore } = useFeed();
@@ -18,10 +18,17 @@ function HomeContent() {
     mode,
     setMode,
     isCached,
+    loadCachedIds,
   } = useSummary();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [summaryVideoId, setSummaryVideoId] = useState<string>();
   const [summaryVideoTitle, setSummaryVideoTitle] = useState<string>();
+
+  useEffect(() => {
+    if (videos.length === 0) return;
+    const ids = videos.map((v) => v.id).filter(Boolean);
+    loadCachedIds(ids);
+  }, [videos, loadCachedIds]);
 
   function handleSummarize(videoId: string, title: string) {
     setSummaryVideoId(videoId);
