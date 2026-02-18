@@ -10,6 +10,8 @@ export function useFeed() {
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pageRef = useRef(0);
+  const retryRef = useRef(0);
+  const MAX_RETRIES = 2;
 
   useEffect(() => {
     async function fetchFeed() {
@@ -40,8 +42,13 @@ export function useFeed() {
       setVideos((prev) => [...prev, ...data.videos]);
       setHasMore(data.hasMore);
       pageRef.current = nextPage;
-    } catch {
-      // silently fail on load more
+      retryRef.current = 0;
+    } catch (err) {
+      console.warn("Feed loadMore failed:", err);
+      retryRef.current++;
+      if (retryRef.current >= MAX_RETRIES) {
+        setHasMore(false);
+      }
     } finally {
       setLoadingMore(false);
     }

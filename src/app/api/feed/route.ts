@@ -129,12 +129,30 @@ export async function GET(request: NextRequest) {
     }
 
     // Load next pages via continuation
-    while (cachedPage < page && cachedFeed.has_continuation) {
-      cachedFeed = await cachedFeed.getContinuation();
-      cachedPage++;
+    try {
+      while (cachedPage < page && cachedFeed.has_continuation) {
+        cachedFeed = await cachedFeed.getContinuation();
+        cachedPage++;
+      }
+    } catch (e) {
+      console.error("Feed continuation failed at page", cachedPage, ":", (e as Error).message);
+      return NextResponse.json({ videos: [], hasMore: false });
     }
 
-    const items = extractAllVideos(cachedFeed);
+    let items = extractAllVideos(cachedFeed);
+
+    // 빈 continuation 스킵 (최대 3회)
+    let emptySkips = 0;
+    while (items.length === 0 && cachedFeed.has_continuation && emptySkips < 3) {
+      try {
+        cachedFeed = await cachedFeed.getContinuation();
+        cachedPage++;
+        items = extractAllVideos(cachedFeed);
+        emptySkips++;
+      } catch {
+        return NextResponse.json({ videos: [], hasMore: false });
+      }
+    }
 
     return NextResponse.json({
       videos: items,
