@@ -39,7 +39,6 @@ yarn-error.log*
 .current-commit
 
 # credential files
-mytube-cookies.json
 mytube-oauth.json
 
 # sqlite

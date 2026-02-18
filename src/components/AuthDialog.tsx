@@ -15,19 +15,12 @@ interface Props {
   onAuthenticated: () => void;
 }
 
-interface OAuthInfo {
-  verificationUrl: string;
-  userCode: string;
-}
-
 export default function AuthDialog({ open, onClose, onAuthenticated }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [isWebView, setIsWebView] = useState(false);
-  const [oauthInfo, setOauthInfo] = useState<OAuthInfo | null>(null);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     setIsWebView(typeof window !== "undefined" && !!window.Android);
@@ -44,8 +37,6 @@ export default function AuthDialog({ open, onClose, onAuthenticated }: Props) {
     if (!open) return;
     setError(null);
     setLoading(false);
-    setOauthInfo(null);
-    setCopied(false);
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
@@ -59,7 +50,6 @@ export default function AuthDialog({ open, onClose, onAuthenticated }: Props) {
         if (status.authenticated) {
           if (pollingRef.current) clearInterval(pollingRef.current);
           setLoading(false);
-          setOauthInfo(null);
           onAuthenticated();
           onClose();
         }
@@ -67,7 +57,6 @@ export default function AuthDialog({ open, onClose, onAuthenticated }: Props) {
           if (pollingRef.current) clearInterval(pollingRef.current);
           setError("로그인이 취소되었습니다");
           setLoading(false);
-          setOauthInfo(null);
         }
       } catch {
         // ignore
@@ -117,46 +106,11 @@ export default function AuthDialog({ open, onClose, onAuthenticated }: Props) {
         return;
       }
 
-      // OAuth device code flow
-      if (data.oauth) {
-        setOauthInfo({
-          verificationUrl: data.verificationUrl,
-          userCode: data.userCode,
-        });
-        setLoading(false);
-        startPolling();
-        return;
-      }
-
       // Puppeteer flow — poll for completion
       startPolling();
     } catch {
       setError("로그인에 실패했습니다");
       setLoading(false);
-    }
-  }
-
-  async function handleCopyCode() {
-    if (!oauthInfo) return;
-    try {
-      await navigator.clipboard.writeText(oauthInfo.userCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      try {
-        const textarea = document.createElement("textarea");
-        textarea.value = oauthInfo.userCode;
-        textarea.style.position = "fixed";
-        textarea.style.opacity = "0";
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textarea);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      } catch {
-        alert("복사에 실패했습니다. 직접 코드를 선택하여 복사해주세요.");
-      }
     }
   }
 
@@ -200,7 +154,7 @@ export default function AuthDialog({ open, onClose, onAuthenticated }: Props) {
       {/* Content */}
       <div className="flex flex-col items-center gap-4 px-5 py-8">
         {/* Initial state — login button */}
-        {!loading && !error && !oauthInfo && (
+        {!loading && !error && (
           <>
             <svg className="h-12 w-12 text-[var(--color-yt-text-secondary)]" viewBox="0 0 24 24" fill="none">
               <path
@@ -222,74 +176,8 @@ export default function AuthDialog({ open, onClose, onAuthenticated }: Props) {
           </>
         )}
 
-        {/* OAuth device code UI */}
-        {oauthInfo && !error && (
-          <div className="flex w-full flex-col items-center gap-4">
-            <p className="text-center text-sm text-[var(--color-yt-text)]">
-              아래 URL에서 코드를 입력하세요
-            </p>
-
-            <a
-              href={oauthInfo.verificationUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline"
-            >
-              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              {oauthInfo.verificationUrl}
-            </a>
-
-            <div className="flex items-center gap-2">
-              <code className="rounded-lg bg-gray-100 px-4 py-2.5 text-xl font-bold tracking-widest text-[var(--color-yt-text)]">
-                {oauthInfo.userCode}
-              </code>
-              <button
-                onClick={handleCopyCode}
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50"
-                aria-label="코드 복사"
-                title="코드 복사"
-              >
-                {copied ? (
-                  <svg className="h-4 w-4 text-green-600" viewBox="0 0 24 24" fill="none">
-                    <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                ) : (
-                  <svg className="h-4 w-4 text-gray-500" viewBox="0 0 24 24" fill="none">
-                    <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="2" />
-                    <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" strokeWidth="2" />
-                  </svg>
-                )}
-              </button>
-            </div>
-
-            <div className="flex items-center gap-2 text-xs text-[var(--color-yt-text-secondary)]">
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-200 border-t-blue-500" />
-              인증 대기 중...
-            </div>
-
-            <button
-              onClick={() => {
-                if (pollingRef.current) clearInterval(pollingRef.current);
-                setOauthInfo(null);
-                setLoading(false);
-              }}
-              className="text-xs text-[var(--color-yt-text-secondary)] underline hover:text-[var(--color-yt-text)]"
-            >
-              취소
-            </button>
-          </div>
-        )}
-
         {/* Puppeteer loading state */}
-        {loading && !oauthInfo && (
+        {loading && (
           <>
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-200 border-t-[var(--color-yt-red)]" />
             <p className="text-center text-sm text-[var(--color-yt-text)]">
