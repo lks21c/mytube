@@ -38,7 +38,8 @@ body {
 /* Summary dialog markdown */
 .summary-content h1,
 .summary-content h2,
-.summary-content h3 {
+.summary-content h3,
+.summary-content h4 {
   font-weight: 700;
   margin-top: 1em;
   margin-bottom: 0.5em;
@@ -46,6 +47,7 @@ body {
 .summary-content h1 { font-size: 1.25rem; }
 .summary-content h2 { font-size: 1.125rem; }
 .summary-content h3 { font-size: 1rem; }
+.summary-content h4 { font-size: 0.9375rem; }
 .summary-content p { margin-bottom: 0.75em; line-height: 1.6; }
 .summary-content ul, .summary-content ol { padding-left: 1.5em; margin-bottom: 0.75em; }
 .summary-content li { margin-bottom: 0.25em; line-height: 1.5; }

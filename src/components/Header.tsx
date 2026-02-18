@@ -16,6 +16,7 @@ export default function Header({ summaryMode, onSummaryModeChange }: Props) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
+  const [isComposing, setIsComposing] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -96,7 +97,14 @@ export default function Header({ summaryMode, onSummaryModeChange }: Props) {
           <input
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              if (!isComposing) setQuery(e.target.value);
+            }}
+            onCompositionStart={() => setIsComposing(true)}
+            onCompositionEnd={(e) => {
+              setIsComposing(false);
+              setQuery(e.currentTarget.value);
+            }}
             placeholder="검색"
             className="h-10 w-full rounded-l-full border border-[var(--color-yt-border)] bg-white px-4 text-sm outline-none focus:border-blue-500"
           />
