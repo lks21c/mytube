@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
+import EnvIndicator from "@/components/EnvIndicator";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -27,7 +28,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
-      <body className={`${GeistSans.variable} antialiased`}>{children}</body>
+      <body className={`${GeistSans.variable} antialiased`}>
+        <EnvIndicator />
+        {children}
+      </body>
     </html>
   );
 }

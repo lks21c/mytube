@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, FormEvent } from "react";
+import { useState, useEffect, useRef, FormEvent } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import AuthDialog from "./AuthDialog";
 import Sidebar from "./Sidebar";
@@ -15,11 +15,11 @@ export default function Header({ summaryMode, onSummaryModeChange }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [query, setQuery] = useState("");
-  const [isComposing, setIsComposing] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [authOpen, setAuthOpen] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
     fetch("/api/auth/status")
@@ -29,15 +29,22 @@ export default function Header({ summaryMode, onSummaryModeChange }: Props) {
   }, []);
 
   useEffect(() => {
-    if (pathname === "/search") {
-      setQuery(searchParams.get("q") ?? "");
+    if (pathname === "/search" && inputRef.current) {
+      inputRef.current.value = searchParams.get("q") ?? "";
     }
   }, [pathname, searchParams]);
 
+  useEffect(() => {
+    if (searchOpen && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [searchOpen]);
+
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const q = query.trim();
+    const q = inputRef.current?.value.trim() ?? "";
     if (!q) return;
+    setSearchOpen(false);
     router.push(`/search?q=${encodeURIComponent(q)}`);
   }
 
@@ -54,7 +61,7 @@ export default function Header({ summaryMode, onSummaryModeChange }: Props) {
 
   return (
     <>
-      <header className="sticky top-0 z-50 flex h-14 items-center justify-between gap-4 border-b border-[var(--color-yt-border)] bg-white px-4">
+      <header className="relative sticky top-0 z-50 flex h-14 items-center justify-between gap-4 border-b border-[var(--color-yt-border)] bg-white px-4">
         {/* Hamburger + Logo */}
         <div className="flex shrink-0 items-center gap-2">
           <button
@@ -90,39 +97,73 @@ export default function Header({ summaryMode, onSummaryModeChange }: Props) {
         </div>
 
         {/* Search */}
-        <form
-          onSubmit={handleSubmit}
-          className="flex max-w-[600px] flex-1 items-center"
+        <div
+          className={
+            searchOpen
+              ? "absolute inset-0 z-10 flex items-center gap-2 bg-white px-2 sm:static sm:inset-auto sm:z-auto sm:flex sm:max-w-[600px] sm:flex-1 sm:items-center sm:gap-0 sm:bg-transparent sm:px-0"
+              : "hidden sm:flex sm:max-w-[600px] sm:flex-1 sm:items-center"
+          }
         >
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => {
-              if (!isComposing) setQuery(e.target.value);
-            }}
-            onCompositionStart={() => setIsComposing(true)}
-            onCompositionEnd={(e) => {
-              setIsComposing(false);
-              setQuery(e.currentTarget.value);
-            }}
-            placeholder="검색"
-            className="h-10 w-full rounded-l-full border border-[var(--color-yt-border)] bg-white px-4 text-sm outline-none focus:border-blue-500"
-          />
-          <button
-            type="submit"
-            className="flex h-10 w-16 shrink-0 items-center justify-center rounded-r-full border border-l-0 border-[var(--color-yt-border)] bg-[var(--color-yt-hover)]"
-            aria-label="검색"
+          {searchOpen && (
+            <button
+              onClick={() => setSearchOpen(false)}
+              className="shrink-0 rounded-full p-2 hover:bg-[var(--color-yt-hover)] sm:hidden"
+              aria-label="검색 닫기"
+            >
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M19 12H5M12 19l-7-7 7-7"
+                  stroke="#0f0f0f"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          )}
+          <form
+            onSubmit={handleSubmit}
+            className="flex flex-1 items-center"
           >
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"
-                stroke="#606060"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
-        </form>
+            <input
+              ref={inputRef}
+              type="text"
+              defaultValue=""
+              placeholder="검색"
+              className="h-10 w-full rounded-l-full border border-[var(--color-yt-border)] bg-white px-4 text-sm outline-none focus:border-blue-500"
+            />
+            <button
+              type="submit"
+              className="flex h-10 w-16 shrink-0 items-center justify-center rounded-r-full border border-l-0 border-[var(--color-yt-border)] bg-[var(--color-yt-hover)]"
+              aria-label="검색"
+            >
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"
+                  stroke="#606060"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </button>
+          </form>
+        </div>
+
+        {/* Mobile search icon */}
+        <button
+          onClick={() => setSearchOpen(true)}
+          className="rounded-full p-2 hover:bg-[var(--color-yt-hover)] sm:hidden"
+          aria-label="검색"
+        >
+          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"
+              stroke="#606060"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
 
         {/* Auth buttons */}
         <div className="flex shrink-0 items-center gap-2">
