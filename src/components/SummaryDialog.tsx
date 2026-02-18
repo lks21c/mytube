@@ -12,6 +12,17 @@ interface Props {
   videoId?: string;
 }
 
+function buildShareText(
+  summary: string,
+  videoTitle?: string,
+  videoId?: string,
+): string {
+  if (videoTitle && videoId) {
+    return `📺 ${videoTitle}\n— MyTube AI 요약\n\n${summary}\n\n🔗 https://www.youtube.com/watch?v=${videoId}`;
+  }
+  return summary;
+}
+
 export default function SummaryDialog({
   open,
   loading,
@@ -23,19 +34,34 @@ export default function SummaryDialog({
 }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [copied, setCopied] = useState(false);
+  const [canShare, setCanShare] = useState(false);
+
+  useEffect(() => {
+    setCanShare(typeof navigator !== "undefined" && !!navigator.share);
+  }, []);
 
   const handleCopy = useCallback(async () => {
     if (!summary) return;
     try {
-      let text = summary;
-      if (videoTitle && videoId) {
-        text += `\n\n참고: ${videoTitle}\nhttps://www.youtube.com/watch?v=${videoId}`;
-      }
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(
+        buildShareText(summary, videoTitle, videoId),
+      );
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // fallback
+    }
+  }, [summary, videoTitle, videoId]);
+
+  const handleShare = useCallback(async () => {
+    if (!summary) return;
+    try {
+      await navigator.share({
+        title: videoTitle ? `📺 ${videoTitle}` : "AI 요약",
+        text: buildShareText(summary, videoTitle, videoId),
+      });
+    } catch {
+      // 사용자가 공유 취소
     }
   }, [summary, videoTitle, videoId]);
 
@@ -60,6 +86,24 @@ export default function SummaryDialog({
           AI 요약
         </h2>
         <div className="flex items-center gap-1">
+          {summary && canShare && (
+            <button
+              onClick={handleShare}
+              className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-[var(--color-yt-hover)]"
+              aria-label="공유"
+              title="공유"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M4 12v7a2 2 0 002 2h12a2 2 0 002-2v-7M16 6l-4-4-4 4M12 2v13"
+                  stroke="#606060"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          )}
           {summary && (
             <button
               onClick={handleCopy}

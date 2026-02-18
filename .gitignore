@@ -42,6 +42,10 @@ yarn-error.log*
 mytube-cookies.json
 mytube-oauth.json
 
+# sqlite
+*.db-shm
+*.db-wal
+
 # vercel
 .vercel
 

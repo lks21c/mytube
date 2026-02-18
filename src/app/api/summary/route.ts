@@ -7,6 +7,7 @@ import {
 import { GEMINI_MODEL, withGemini } from "@/lib/gemini";
 import { openrouter, MODEL } from "@/lib/openrouter";
 import { getInnertube } from "@/lib/innertube";
+import { getCachedSummary, setCachedSummary } from "@/lib/db";
 
 type SummaryMode = "openrouter" | "gemini";
 
@@ -80,6 +81,36 @@ async function summarizeWithGemini(videoId: string): Promise<string> {
   });
 }
 
+// localStorage → SQLite 일괄 마이그레이션
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { entries } = body as {
+      entries?: { videoId: string; mode: string; summary: string }[];
+    };
+
+    if (!Array.isArray(entries) || entries.length === 0) {
+      return NextResponse.json({ migrated: 0 });
+    }
+
+    let migrated = 0;
+    for (const { videoId, mode, summary } of entries) {
+      if (videoId && mode && summary && !getCachedSummary(videoId, mode)) {
+        setCachedSummary(videoId, mode, summary);
+        migrated++;
+      }
+    }
+
+    return NextResponse.json({ migrated });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    return NextResponse.json(
+      { error: "마이그레이션 실패", detail: msg },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -95,6 +126,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // L2: 서버 SQLite 캐시 확인
+    const cached = getCachedSummary(videoId, mode);
+    if (cached) {
+      return NextResponse.json({ summary: cached });
+    }
+
     const summary =
       mode === "gemini"
         ? await summarizeWithGemini(videoId)
@@ -106,6 +143,9 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    // 생성된 요약을 SQLite에 캐시
+    setCachedSummary(videoId, mode, summary);
 
     return NextResponse.json({ summary });
   } catch (error) {
