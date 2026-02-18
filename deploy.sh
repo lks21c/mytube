@@ -21,8 +21,8 @@ echo "=== mytube 리모트 배포 시작 ==="
 echo "SSH 접속: $REMOTE_HOST"
 echo ""
 
-echo "🚀 build.sh 원격 실행 중..."
-ssh $REMOTE_HOST "export PATH=/usr/local/bin:\$PATH && cd $REMOTE_DIR && ./build.sh"
+echo "🚀 restart.sh 원격 실행 중..."
+ssh $REMOTE_HOST "export PATH=/usr/local/bin:\$PATH && cd $REMOTE_DIR && ./restart.sh"
 
 echo ""
 echo "=== 배포 완료 ==="

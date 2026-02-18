@@ -33,6 +33,15 @@ yarn-error.log*
 .env
 .env*.local
 
+# docker volume hash files
+.deps-hash
+.build-hash
+.current-commit
+
+# credential files
+mytube-cookies.json
+mytube-oauth.json
+
 # vercel
 .vercel
 
